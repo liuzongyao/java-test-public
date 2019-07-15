@@ -1,1 +1,1 @@
-FROM 10.0.129.98:32002/library/helloworld:latest
+FROM index.alauda.cn/alaudaorg/qaimages:helloworld
