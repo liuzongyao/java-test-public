@@ -1,14 +1,14 @@
 pipeline {
   agent {
-    label 'java'
+    label 'golang'
   }
   stages {
     stage('clone') {
       steps {
         script {
-          env.CODE_REPO = "http://10.0.0.15:31101/root/java-test-public"
+          env.CODE_REPO = "http://10.0.0.15:31101/root/go-test-public"
           env.CREDENTIAL_ID = "global-credentials-gitlab"
-          env.RELATIVE_DIRECTORY = "."
+          env.RELATIVE_DIRECTORY = "src"
           env.BRANCH = "master"
           def scmVars = checkout([
             $class: 'GitSCM',
@@ -33,11 +33,14 @@ pipeline {
 
       }
     }
-    stage('maven') {
+    stage('golang') {
       steps {
         script {
-          container('java') {
-            sh """mvn clean package"""
+          env.GOPATH = WORKSPACE
+          dir(RELATIVE_DIRECTORY) {
+            container('golang') {
+              sh """go build"""
+            }
           }
         }
 
@@ -47,7 +50,7 @@ pipeline {
       steps {
         script {
           def retryCount = 3
-          def repositoryAddr = '10.0.0.7:31104/library/helloworld'.replace("http://","").replace("https://","")
+          def repositoryAddr = '10.0.0.7:31104/library/helloworld1'.replace("http://","").replace("https://","")
           env.IMAGE_REPO = repositoryAddr
           def credentialId = ''
           credentialId = "devops-dockercfg--devops--harbor"
@@ -79,7 +82,7 @@ pipeline {
                     }
                   }
                 }
-                def tagswithcomma = "latest1234"
+                def tagswithcomma = "latest"
                 def tags = tagswithcomma.split(",")
                 def incubatorimage = "${IMAGE_REPO}:${tags[0]}"
                 sh " docker build -t ${incubatorimage} -f Dockerfile  ."
@@ -105,9 +108,9 @@ pipeline {
         script {
           env.CREDENTIAL_ID = "devops-dockercfg--devops--harbor"
           env.CREDENTIAL_ID = env.CREDENTIAL_ID.replaceFirst("devops-","")
-          def tagwithcomma = "latest1234"
+          def tagwithcomma = "latest"
           def tags = tagwithcomma.split(",")
-          env.NEW_IMAGE = "10.0.0.7:31104/library/helloworld:${tags[0]}"
+          env.NEW_IMAGE = "10.0.0.7:31104/library/helloworld1:${tags[0]}"
           container('tools') {
             timeout(time:300, unit: "SECONDS") {
               alaudaDevops.withCluster("devops") {
