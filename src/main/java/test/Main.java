@@ -8,6 +8,6 @@ public class Main {
 
 
     public String helloToZXJ() {
-        return "Hello ZXJ";
+        return "Hello ZXJq";
     }
 }
