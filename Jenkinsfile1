@@ -170,6 +170,6 @@ pipeline {
 
   }
   options {
-    buildDiscarder(logRotator(numToKeepStr: '200'))
+    buildDiscarder(logRotator(numToKeepStr: '2000'))
   }
 }
