@@ -1,14 +1,14 @@
 pipeline {
   agent {
-    label 'golang'
+    label 'java'
   }
   stages {
     stage('clone') {
       steps {
         script {
-          env.CODE_REPO = "http://10.0.0.15:31101/root/go-test-public"
-          env.CREDENTIAL_ID = "global-credentials-gitlab"
-          env.RELATIVE_DIRECTORY = "src"
+          env.CODE_REPO = "https://github.com/liuzongyao/java-test-public"
+          env.CREDENTIAL_ID = "devops-github"
+          env.RELATIVE_DIRECTORY = "."
           env.BRANCH = "master"
           def scmVars = checkout([
             $class: 'GitSCM',
@@ -33,14 +33,11 @@ pipeline {
 
       }
     }
-    stage('golang') {
+    stage('maven') {
       steps {
         script {
-          env.GOPATH = WORKSPACE
-          dir(RELATIVE_DIRECTORY) {
-            container('golang') {
-              sh """go build"""
-            }
+          container('java') {
+            sh """mvn clean package"""
           }
         }
 
@@ -50,7 +47,7 @@ pipeline {
       steps {
         script {
           def retryCount = 3
-          def repositoryAddr = '10.0.0.7:31104/library/helloworld'.replace("http://","").replace("https://","")
+          def repositoryAddr = '10.0.0.7:31104/library/helloworld1'.replace("http://","").replace("https://","")
           env.IMAGE_REPO = repositoryAddr
           def credentialId = ''
           credentialId = "devops-dockercfg--devops--harbor"
@@ -82,7 +79,7 @@ pipeline {
                     }
                   }
                 }
-                def tagswithcomma = "latest123,latest1231234"
+                def tagswithcomma = "latest"
                 def tags = tagswithcomma.split(",")
                 def incubatorimage = "${IMAGE_REPO}:${tags[0]}"
                 sh " docker build -t ${incubatorimage} -f Dockerfile  ."
