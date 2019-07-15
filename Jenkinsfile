@@ -6,8 +6,8 @@ pipeline {
     stage('clone') {
       steps {
         script {
-          env.CODE_REPO = "https://github.com/liuzongyao/java-test-public"
-          env.CREDENTIAL_ID = "devops-github"
+          env.CODE_REPO = "http://10.0.0.15:31101/root/java-test-public"
+          env.CREDENTIAL_ID = "global-credentials-gitlab"
           env.RELATIVE_DIRECTORY = "."
           env.BRANCH = "master"
           def scmVars = checkout([
@@ -47,7 +47,7 @@ pipeline {
       steps {
         script {
           def retryCount = 3
-          def repositoryAddr = '10.0.0.7:31104/library/helloworld1'.replace("http://","").replace("https://","")
+          def repositoryAddr = '10.0.0.7:31104/library/helloworld'.replace("http://","").replace("https://","")
           env.IMAGE_REPO = repositoryAddr
           def credentialId = ''
           credentialId = "devops-dockercfg--devops--harbor"
@@ -79,7 +79,7 @@ pipeline {
                     }
                   }
                 }
-                def tagswithcomma = "latest"
+                def tagswithcomma = "latest1234"
                 def tags = tagswithcomma.split(",")
                 def incubatorimage = "${IMAGE_REPO}:${tags[0]}"
                 sh " docker build -t ${incubatorimage} -f Dockerfile  ."
@@ -92,6 +92,60 @@ pipeline {
                 }
                 if (credentialId != '') {
                   sh "docker logout ${IMAGE_REPO}"
+                }
+              }
+            }
+          }
+        }
+
+      }
+    }
+    stage('deployService') {
+      steps {
+        script {
+          env.CREDENTIAL_ID = "devops-dockercfg--devops--harbor"
+          env.CREDENTIAL_ID = env.CREDENTIAL_ID.replaceFirst("devops-","")
+          def tagwithcomma = "latest1234"
+          def tags = tagwithcomma.split(",")
+          env.NEW_IMAGE = "10.0.0.7:31104/library/helloworld:${tags[0]}"
+          container('tools') {
+            timeout(time:300, unit: "SECONDS") {
+              alaudaDevops.withCluster("devops") {
+                alaudaDevops.withProject("devops-devops") {
+                  def p = alaudaDevops.selector('deployment', 'helloworld').object()
+                  p.metadata.labels['BUILD_ID']=env.BUILD_ID
+                  for(container in p.spec.template.spec.containers) {
+                    if(container.name == "helloworld") {
+                      container.image = "${NEW_IMAGE}"
+                      def cmd = ""
+                      def args = ""
+                      if(cmd!="") {
+                        container.command = [cmd]
+                      }
+                      if(args!="") {
+                        container.args = [args]
+                      }
+                      break
+                    }
+                  }
+                  if(env.CREDENTIAL_ID != "") {
+                    if(p.spec.template.spec.imagePullSecrets != null) {
+                      def notFound = true
+                      for(secret in p.spec.template.spec.imagePullSecrets) {
+                        if(secret == env.CREDENTIAL_ID) {
+                          notFound = false
+                          break
+                        }
+                      }
+                      if(notFound) {
+                        p.spec.template.spec.imagePullSecrets[p.spec.template.spec.imagePullSecrets.size()] = [name: env.CREDENTIAL_ID]
+                      }
+                    }
+                    else {
+                      p.spec.template.spec.imagePullSecrets = [[name: env.CREDENTIAL_ID]]
+                    }
+                  }
+                  alaudaDevops.apply(p, "--validate=false")
                 }
               }
             }
@@ -116,6 +170,6 @@ pipeline {
 
   }
   options {
-    buildDiscarder(logRotator(numToKeepStr: '300'))
+    buildDiscarder(logRotator(numToKeepStr: '200'))
   }
 }
